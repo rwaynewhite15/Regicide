@@ -750,7 +750,7 @@ body {
 /* Tablet and smaller desktop (768px - 1024px) */
 @media (max-width: 1024px) {
     .game-area {
-        grid-template-columns: 160px 1fr 240px;
+        grid-template-columns: 160px 1fr 240px; /* Compact log panel for tablets */
         gap: 10px;
         padding: 10px;
     }
@@ -777,7 +777,7 @@ body {
 
     .ai-hand-area { 
         order: -1;
-        flex-direction: row;
+        flex-direction: row; /* Switch to horizontal layout on tablet/mobile for better space usage */
         justify-content: center;
     }
     
@@ -1021,8 +1021,8 @@ body {
 /* Extra small mobile (320px - 375px) */
 @media (max-width: 375px) {
     :root {
-        --card-width: 44px;
-        --card-height: 62px;
+        --card-width: 46px;
+        --card-height: 64px;
     }
 
     .menu-title { font-size: 2rem; }
@@ -1041,7 +1041,7 @@ body {
     .card-center { font-size: 1.1rem; }
 
     #player-hand {
-        gap: 2px;
+        gap: 3px; /* Increased gap to improve touch targets */
     }
 
     .btn-play {
