@@ -503,6 +503,12 @@ class RegicideUI {
                     const ranks = [...new Set(nonAces.map(c => c.rank))];
                     if (ranks.length > 1) {
                         message = 'Non-Ace cards must be the same rank';
+                    } else if (aces.length === 0) {
+                        // Same rank non-Ace combo - check if total exceeds 10
+                        const total = nonAces.reduce((sum, c) => sum + cardValue(c), 0);
+                        if (total > 10) {
+                            message = 'Same-rank combos can only total up to 10';
+                        }
                     }
                 }
                 
