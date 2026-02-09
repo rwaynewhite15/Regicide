@@ -19,11 +19,13 @@ class RegicideUI {
     }
 
     bindMenuEvents() {
+        const startSoloBtn = document.getElementById('start-solo');
         const startBtn = document.getElementById('start-game');
         const rulesBtn = document.getElementById('show-rules');
         const closeRulesBtn = document.getElementById('close-rules');
 
-        if (startBtn) startBtn.addEventListener('click', () => this.startGame());
+        if (startSoloBtn) startSoloBtn.addEventListener('click', () => this.startGame(1));
+        if (startBtn) startBtn.addEventListener('click', () => this.startGame(2));
         if (rulesBtn) rulesBtn.addEventListener('click', () => this.showRules());
         if (closeRulesBtn) closeRulesBtn.addEventListener('click', () => this.hideRules());
     }
@@ -36,13 +38,29 @@ class RegicideUI {
         document.getElementById('rules-modal').classList.remove('active');
     }
 
-    startGame() {
-        this.game = new RegicideGame(2); // 2 players: human + AI
-        this.ai = new RegicideAI(this.game, 1); // AI is player 2
+    startGame(playerCount = 2) {
+        this.game = new RegicideGame(playerCount);
+        this.playerCount = playerCount;
+        
+        // Only create AI for 2-player mode
+        if (playerCount === 2) {
+            this.ai = new RegicideAI(this.game, 1); // AI is player 2
+        } else {
+            this.ai = null;
+        }
+        
         this.selectedCards.clear();
 
         document.getElementById('main-menu').classList.add('hidden');
-        document.getElementById('game-board').classList.remove('hidden');
+        const gameBoard = document.getElementById('game-board');
+        gameBoard.classList.remove('hidden');
+        
+        // Add solo-mode class to game board if solo
+        if (playerCount === 1) {
+            gameBoard.classList.add('solo-mode');
+        } else {
+            gameBoard.classList.remove('solo-mode');
+        }
 
         this.bindGameEvents();
         this.render();
@@ -56,7 +74,7 @@ class RegicideUI {
 
         playBtn.addEventListener('click', () => this.handlePlay());
         yieldBtn.addEventListener('click', () => this.handleYield());
-        newGameBtn.addEventListener('click', () => this.startGame());
+        newGameBtn.addEventListener('click', () => this.startGame(this.playerCount || 2));
         menuBtn.addEventListener('click', () => this.returnToMenu());
     }
 
@@ -106,7 +124,10 @@ class RegicideUI {
             
             if (result.survived) {
                 this.showMessage('Attack survived!');
-                this.checkAndRunAI();
+                // Only run AI if not in solo mode
+                if (this.ai) {
+                    this.checkAndRunAI();
+                }
             } else if (result.gameover) {
                 this.renderGameOver(false);
             }
@@ -146,7 +167,10 @@ class RegicideUI {
                 // Player needs to discard for enemy attack
                 this.showMessage(`Enemy attacks! Discard cards worth ${result.attackDamage} total.`);
             } else {
-                this.checkAndRunAI();
+                // Only run AI if not in solo mode
+                if (this.ai) {
+                    this.checkAndRunAI();
+                }
             }
         }
     }
@@ -157,13 +181,16 @@ class RegicideUI {
             this.renderGameOver(false);
         } else if (state.phase === 'victory') {
             this.renderGameOver(true);
-        } else if (state.phase === 'play' && state.currentPlayer === 1) {
+        } else if (state.phase === 'play' && state.currentPlayer === 1 && this.ai) {
+            // Only run AI if it exists (not solo mode)
             this.checkAndRunAI();
         }
         // If discard phase and player 0, wait for player input
     }
 
     checkAndRunAI() {
+        if (!this.ai) return; // Skip if no AI (solo mode)
+        
         const state = this.game.getState();
         if (state.phase === 'gameover' || state.phase === 'victory') {
             if (state.phase === 'victory') this.renderGameOver(true);
@@ -273,7 +300,9 @@ class RegicideUI {
         
         this.renderEnemy(state);
         this.renderPlayerHand(state);
-        this.renderAIHand(state);
+        if (this.ai) {
+            this.renderAIHand(state);
+        }
         this.renderGameInfo(state);
         this.renderActions(state);
         this.renderLog(state);
@@ -373,13 +402,22 @@ class RegicideUI {
             turnLabel.className = 'turn-label victory';
         } else if (state.phase === 'discard') {
             const remaining = state.discardNeeded - state.discardedSoFar.reduce((s, c) => s + cardValue(c), 0);
-            turnLabel.textContent = state.currentPlayer === 0 
-                ? `Discard cards (${remaining} damage needed)` 
-                : 'AI discarding...';
+            if (this.ai) {
+                turnLabel.textContent = state.currentPlayer === 0 
+                    ? `Discard cards (${remaining} damage needed)` 
+                    : 'AI discarding...';
+            } else {
+                turnLabel.textContent = `Discard cards (${remaining} damage needed)`;
+            }
             turnLabel.className = 'turn-label discard';
         } else {
-            turnLabel.textContent = state.currentPlayer === 0 ? 'Your Turn' : "AI's Turn";
-            turnLabel.className = `turn-label ${state.currentPlayer === 0 ? 'your-turn' : 'ai-turn'}`;
+            if (this.ai) {
+                turnLabel.textContent = state.currentPlayer === 0 ? 'Your Turn' : "AI's Turn";
+                turnLabel.className = `turn-label ${state.currentPlayer === 0 ? 'your-turn' : 'ai-turn'}`;
+            } else {
+                turnLabel.textContent = 'Your Turn';
+                turnLabel.className = 'turn-label your-turn';
+            }
         }
     }
 
@@ -422,7 +460,11 @@ class RegicideUI {
         if (victory) {
             title.textContent = '🎉 Victory!';
             title.className = 'victory-title';
-            message.textContent = `You and your AI partner defeated all ${state.enemiesDefeated} enemies! The kingdom is saved!`;
+            if (this.ai) {
+                message.textContent = `You and your AI partner defeated all ${state.enemiesDefeated} enemies! The kingdom is saved!`;
+            } else {
+                message.textContent = `You defeated all ${state.enemiesDefeated} enemies! The kingdom is saved!`;
+            }
         } else {
             title.textContent = '💀 Defeat';
             title.className = 'defeat-title';
