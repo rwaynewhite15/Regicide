@@ -39,6 +39,9 @@ class RegicideUI {
     }
 
     startGame(playerCount = 2) {
+        // Dismiss game over overlay if showing
+        document.getElementById('game-over-overlay').classList.remove('active');
+        
         this.game = new RegicideGame(playerCount);
         this.playerCount = playerCount;
         
@@ -181,7 +184,13 @@ class RegicideUI {
         if (this.animating) return;
         const state = this.game.getState();
         if (state.phase !== 'play' || state.currentPlayer !== 0) return;
-        if (state.jokersAvailable <= 0) return;
+        
+        // Solo: check counter; Multiplayer: check if Joker card in hand
+        if (state.playerCount === 1) {
+            if (state.jokersAvailable <= 0) return;
+        } else {
+            if (!state.hasJokerInHand) return;
+        }
 
         const result = this.game.playJoker(0);
         if (result.success) {
@@ -373,22 +382,28 @@ class RegicideUI {
         const isDiscardPhase = state.phase === 'discard';
 
         handEl.innerHTML = hand.map(card => {
-            const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
+            const isJoker = card.rank === 'Joker';
+            const isRed = !isJoker && (card.suit === 'hearts' || card.suit === 'diamonds');
+            const colorClass = isJoker ? 'joker' : (isRed ? 'red' : 'black');
             const selected = this.selectedCards.has(card.id);
             const clickable = isPlayerTurn && (state.phase === 'play' || state.phase === 'discard');
             
+            const displayRank = isJoker ? '🃏' : card.rank;
+            const displaySuit = isJoker ? '' : SUIT_SYMBOLS[card.suit];
+            const centerSymbol = isJoker ? '🃏' : SUIT_SYMBOLS[card.suit];
+            
             return `
-                <div class="card ${isRed ? 'red' : 'black'} ${selected ? 'selected' : ''} ${clickable ? 'clickable' : ''}"
+                <div class="card ${colorClass} ${selected ? 'selected' : ''} ${clickable ? 'clickable' : ''}"
                      data-card-id="${card.id}"
                      onclick="ui.toggleCard('${card.id}')">
                     <div class="card-corner top-left">
-                        <div class="card-rank">${card.rank}</div>
-                        <div class="card-suit-small">${SUIT_SYMBOLS[card.suit]}</div>
+                        <div class="card-rank">${displayRank}</div>
+                        <div class="card-suit-small">${displaySuit}</div>
                     </div>
-                    <div class="card-center">${SUIT_SYMBOLS[card.suit]}</div>
+                    <div class="card-center">${centerSymbol}</div>
                     <div class="card-corner bottom-right">
-                        <div class="card-rank">${card.rank}</div>
-                        <div class="card-suit-small">${SUIT_SYMBOLS[card.suit]}</div>
+                        <div class="card-rank">${displayRank}</div>
+                        <div class="card-suit-small">${displaySuit}</div>
                     </div>
                 </div>
             `;
@@ -471,9 +486,17 @@ class RegicideUI {
         }
 
         if (jokerBtn) {
-            if (state.playerCount === 1 && state.jokersAvailable > 0 && state.currentPlayer === 0 && state.phase === 'play') {
+            const showJoker = state.currentPlayer === 0 && state.phase === 'play' && (
+                (state.playerCount === 1 && state.jokersAvailable > 0) ||
+                (state.playerCount > 1 && state.hasJokerInHand)
+            );
+            if (showJoker) {
                 jokerBtn.style.display = '';
-                jokerBtn.textContent = `🃏 Play Joker (${state.jokersAvailable} left)`;
+                if (state.playerCount === 1) {
+                    jokerBtn.textContent = `🃏 Play Joker (${state.jokersAvailable} left)`;
+                } else {
+                    jokerBtn.textContent = `🃏 Play Joker`;
+                }
                 jokerBtn.disabled = false;
             } else {
                 jokerBtn.style.display = 'none';
@@ -497,26 +520,31 @@ class RegicideUI {
         const state = this.game.getState();
 
         if (victory) {
-            if (!this.ai && this.playerCount === 1) {
-                // Solo mode tiered victory
-                const jokersUsed = state.jokersUsed;
-                if (jokersUsed === 0) {
-                    title.textContent = '🥇 GOLD VICTORY!';
-                    title.className = 'victory-title victory-gold';
+            const jokersUsed = state.jokersUsed;
+            if (jokersUsed === 0) {
+                title.textContent = '🥇 GOLD VICTORY!';
+                title.className = 'victory-title victory-gold';
+                if (this.playerCount === 1) {
                     message.textContent = 'You conquered all 12 enemies without using any Jokers! A true Regicide master!';
-                } else if (jokersUsed === 1) {
-                    title.textContent = '🥈 SILVER VICTORY!';
-                    title.className = 'victory-title victory-silver';
+                } else {
+                    message.textContent = 'You and your AI partner conquered all 12 enemies without using any Jokers! Legendary teamwork!';
+                }
+            } else if (jokersUsed === 1) {
+                title.textContent = '🥈 SILVER VICTORY!';
+                title.className = 'victory-title victory-silver';
+                if (this.playerCount === 1) {
                     message.textContent = 'You conquered all 12 enemies using only 1 Joker. An impressive feat!';
                 } else {
-                    title.textContent = '🥉 BRONZE VICTORY!';
-                    title.className = 'victory-title victory-bronze';
-                    message.textContent = 'You conquered all 12 enemies using both Jokers. The kingdom is saved!';
+                    message.textContent = 'You and your AI partner conquered all 12 enemies using 1 Joker. Well played!';
                 }
             } else {
-                title.textContent = '🎉 Victory!';
-                title.className = 'victory-title';
-                message.textContent = `You and your AI partner defeated all ${state.enemiesDefeated} enemies! The kingdom is saved!`;
+                title.textContent = '🥉 BRONZE VICTORY!';
+                title.className = 'victory-title victory-bronze';
+                if (this.playerCount === 1) {
+                    message.textContent = 'You conquered all 12 enemies using both Jokers. The kingdom is saved!';
+                } else {
+                    message.textContent = 'You and your AI partner conquered all 12 enemies using both Jokers. The kingdom is saved!';
+                }
             }
         } else {
             title.textContent = '💀 DEFEAT';
