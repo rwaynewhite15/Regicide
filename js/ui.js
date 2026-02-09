@@ -492,14 +492,21 @@ class RegicideUI {
         }
 
         if (jokerBtn) {
-            const showJoker = state.currentPlayer === 0 && state.phase === 'play' && (
-                (state.playerCount === 1 && state.jokersAvailable > 0) ||
-                (state.playerCount > 1 && state.hasJokerInHand)
+            const showJoker = state.currentPlayer === 0 && (
+                (state.phase === 'play' && (
+                    (state.playerCount === 1 && state.jokersAvailable > 0) ||
+                    (state.playerCount > 1 && state.hasJokerInHand)
+                )) ||
+                (state.phase === 'discard' && state.playerCount === 1 && state.jokersAvailable > 0)
             );
             if (showJoker) {
                 jokerBtn.style.display = '';
                 if (state.playerCount === 1) {
-                    jokerBtn.textContent = `🃏 Play Joker (${state.jokersAvailable} left)`;
+                    if (state.phase === 'discard') {
+                        jokerBtn.textContent = `🃏 Emergency Joker (${state.jokersAvailable} left)`;
+                    } else {
+                        jokerBtn.textContent = `🃏 Play Joker (${state.jokersAvailable} left)`;
+                    }
                 } else {
                     jokerBtn.textContent = `🃏 Play Joker`;
                 }
