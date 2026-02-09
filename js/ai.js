@@ -207,9 +207,13 @@ class RegicideAI {
         const effectiveAttack = state.effectiveAttack;
         const handSize = state.hands[this.playerIndex].length;
         const tavernCount = state.tavernCount;
+        const enemySuit = state.currentEnemy ? state.currentEnemy.suit : null;
 
         let totalDamage = damage;
-        if (suits.includes('clubs')) totalDamage = damage * 2;
+        // Only apply clubs bonus if enemy is not immune
+        if (suits.includes('clubs') && enemySuit !== 'clubs') {
+            totalDamage = damage * 2;
+        }
 
         let score = 0;
 
@@ -228,24 +232,24 @@ class RegicideAI {
         // Base damage score
         score += totalDamage * 2;
 
-        // Suit bonuses based on situation
-        if (suits.includes('spades') && effectiveAttack > 5) {
-            // Spades are great when enemy attack is high
+        // Suit bonuses based on situation (factor in immunity)
+        if (suits.includes('spades') && effectiveAttack > 5 && enemySuit !== 'spades') {
+            // Spades are great when enemy attack is high (and enemy not immune)
             score += damage * 3;
         }
 
-        if (suits.includes('diamonds') && handSize < 4) {
-            // Diamonds are great when hand is low
+        if (suits.includes('diamonds') && handSize < 4 && enemySuit !== 'diamonds') {
+            // Diamonds are great when hand is low (and enemy not immune)
             score += damage * 2;
         }
 
-        if (suits.includes('hearts') && state.discardCount > 3) {
-            // Hearts are great when discard pile has cards
+        if (suits.includes('hearts') && state.discardCount > 3 && enemySuit !== 'hearts') {
+            // Hearts are great when discard pile has cards (and enemy not immune)
             score += damage * 1.5;
         }
 
-        if (suits.includes('clubs')) {
-            // Clubs are always decent for damage
+        if (suits.includes('clubs') && enemySuit !== 'clubs') {
+            // Clubs are always decent for damage (if enemy not immune)
             score += damage;
         }
 
@@ -259,9 +263,9 @@ class RegicideAI {
         }
 
         // Penalize if the effective attack after play would be devastating
-        // and we don't have spades
+        // and we don't have spades (or enemy is immune to spades)
         const attackAfter = effectiveAttack;
-        if (attackAfter > 10 && !suits.includes('spades')) {
+        if (attackAfter > 10 && (!suits.includes('spades') || enemySuit === 'spades')) {
             score -= attackAfter;
         }
 
