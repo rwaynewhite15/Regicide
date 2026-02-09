@@ -93,7 +93,7 @@ function shuffle(arr) {
  * Valid combos:
  * - Single card (any)
  * - Multiple Aces (Animal Companion pack, 2-4 Aces)
- * - 1-4 Aces + exactly 1 non-Ace card (Animal Companion combo)
+ * - 1-4 Aces + exactly 1 non-Ace card (Animal Companion combo) - including Royal Cards!
  * - Multiple cards of same rank (2-4 of same value)
  */
 function isValidCombo(cards) {
@@ -108,13 +108,11 @@ function isValidCombo(cards) {
     const aces = cards.filter(c => c.rank === 'A');
     const nonAces = cards.filter(c => c.rank !== 'A');
     
-    // Face cards cannot be played from hand
-    if (nonAces.some(c => FACE_RANKS.includes(c.rank))) return false;
-    
     // All aces — valid (animal companion pack)
     if (nonAces.length === 0) return aces.length <= 4;
     
     // Aces + exactly 1 non-Ace card — valid (animal companion combo)
+    // This now includes Royal Cards (J, Q, K)!
     if (aces.length > 0 && nonAces.length === 1) return true;
     
     // Multiple non-Ace cards — must all be same rank (existing rule), no aces mixed in
@@ -138,6 +136,44 @@ function comboValue(cards) {
 
 function comboSuits(cards) {
     return [...new Set(cards.map(c => c.suit))];
+}
+
+/**
+ * Check if game is over due to inability to handle damage.
+ * Game is over when:
+ * 1. Current player has no cards to discard
+ * 2. No Jokers available (solo mode) or no Joker cards in any hand (multiplayer)
+ * 3. The tavern is empty
+ */
+function isGameOverCondition(game) {
+    const currentHand = game.hands[game.currentPlayer];
+    
+    // Check if current player has any cards
+    if (currentHand.length > 0) {
+        return false; // Player has cards, game not over
+    }
+    
+    // Check if Jokers are available
+    if (game.playerCount === 1) {
+        // Solo mode: check counter
+        if (game.jokersAvailable > 0) {
+            return false; // Jokers still available
+        }
+    } else {
+        // Multiplayer mode: check if any player has a Joker card
+        const hasJokerCard = game.hands.some(hand => hand.some(c => c.rank === 'Joker'));
+        if (hasJokerCard) {
+            return false; // Joker card available
+        }
+    }
+    
+    // Check if tavern has cards
+    if (game.tavern.length > 0) {
+        return false; // Can still draw cards
+    }
+    
+    // All conditions met - game over
+    return true;
 }
 
 class RegicideGame {
@@ -486,14 +522,12 @@ class RegicideGame {
                 // Must discard entire hand
                 this.addLog(`Player ${this.currentPlayer + 1} cannot fully absorb the attack.`);
             }
-            if (this.hands[this.currentPlayer].length === 0 && effectiveAttack > 0) {
-                // Check if any player has cards
-                const anyoneHasCards = this.hands.some(h => h.length > 0);
-                if (!anyoneHasCards && this.tavern.length === 0) {
-                    this.phase = 'gameover';
-                    events.push({ type: 'gameover', message: 'No cards left to absorb damage. Game Over!' });
-                    this.addLog('💀 Game Over! No cards to absorb damage.');
-                }
+            
+            // Check game-over condition
+            if (isGameOverCondition(this)) {
+                this.phase = 'gameover';
+                events.push({ type: 'gameover', message: 'No cards to discard, no Jokers available, and tavern is empty. Game Over!' });
+                this.addLog('💀 Game Over! No cards to absorb damage.');
             }
         } else {
             // No damage to absorb, next player's turn
@@ -561,10 +595,12 @@ class RegicideGame {
                 this.currentPlayer = (this.currentPlayer + 1) % this.playerCount;
                 return { success: true, survived: true, message: 'Attack survived!' };
             }
-            // Game over - can't absorb enough
-            this.phase = 'gameover';
-            this.addLog('💀 Game Over! Could not absorb enough damage.');
-            return { success: true, gameover: true, message: 'Game Over! Not enough cards to survive.' };
+            // Check game-over condition
+            if (isGameOverCondition(this)) {
+                this.phase = 'gameover';
+                this.addLog('💀 Game Over! No cards to discard, no Jokers available, and tavern is empty.');
+                return { success: true, gameover: true, message: 'Game Over! Not enough cards to survive.' };
+            }
         }
 
         return { success: true, remaining, message: `Need ${remaining} more damage to absorb.` };
@@ -605,13 +641,11 @@ class RegicideGame {
             this.phase = 'discard';
             this.addLog(`⚡ Enemy attacks for ${effectiveAttack}!`);
 
-            if (this.hands[this.currentPlayer].length === 0) {
-                const anyoneHasCards = this.hands.some(h => h.length > 0);
-                if (!anyoneHasCards && this.tavern.length === 0) {
-                    this.phase = 'gameover';
-                    this.addLog('💀 Game Over!');
-                    return { success: true, gameover: true };
-                }
+            // Check game-over condition
+            if (isGameOverCondition(this)) {
+                this.phase = 'gameover';
+                this.addLog('💀 Game Over! No cards to discard, no Jokers available, and tavern is empty.');
+                return { success: true, gameover: true };
             }
 
             return { success: true, phase: 'discard', attackDamage: effectiveAttack };
