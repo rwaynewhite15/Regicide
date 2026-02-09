@@ -193,7 +193,8 @@ class RegicideAI {
             }
         }
 
-        return plays;
+        // Filter to only valid combos
+        return plays.filter(play => isValidCombo(play));
     }
 
     /**

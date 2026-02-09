@@ -107,7 +107,12 @@ function isValidCombo(cards) {
     // Multiple non-Ace cards — must all be same rank (existing rule), no aces mixed in
     if (aces.length === 0) {
         const rank = nonAces[0].rank;
-        return nonAces.every(c => c.rank === rank) && nonAces.length <= 4;
+        if (!nonAces.every(c => c.rank === rank)) return false;
+        if (FACE_RANKS.includes(rank)) return false;
+        if (nonAces.length > 4) return false;
+        // Same-rank sets can only add up to 10
+        const total = nonAces.reduce((sum, c) => sum + cardValue(c), 0);
+        return total <= 10;
     }
     
     // Aces + multiple non-Ace cards — NOT valid
