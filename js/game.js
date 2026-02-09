@@ -52,7 +52,14 @@ function createDeck(playerCount = 1) {
             deck.push({ suit, rank, id: `${rank}_${suit}` });
         }
     }
-    // Jokers are no longer cards - they are a separate resource counter
+    // For 2+ players, Jokers are actual cards shuffled into the tavern
+    if (playerCount >= 2) {
+        const jokerCount = playerCount === 2 ? 2 : (playerCount === 3 ? 1 : 0);
+        for (let i = 0; i < jokerCount; i++) {
+            deck.push({ suit: 'joker', rank: 'Joker', id: `Joker_${i + 1}` });
+        }
+    }
+    // For solo mode, Jokers remain a separate resource counter (not cards)
     return deck;
 }
 
@@ -212,9 +219,10 @@ class RegicideGame {
     }
 
     /**
-     * Play a Joker to reset hand (solo mode only).
+     * Play a Joker to reset hand.
+     * Solo mode: Uses counter-based Jokers (always available).
+     * Multiplayer mode: Joker must be a card in hand.
      * Discards entire hand and draws back up to max hand size.
-     * Jokers are a separate resource counter, not cards.
      */
     playJoker(playerIndex) {
         if (this.phase !== 'play') {
@@ -223,34 +231,66 @@ class RegicideGame {
         if (playerIndex !== this.currentPlayer) {
             return { success: false, message: 'Not your turn' };
         }
-        if (this.jokersAvailable <= 0) {
-            return { success: false, message: 'No Jokers available' };
-        }
 
         const hand = this.hands[playerIndex];
 
-        // Discard all cards in hand
-        for (const card of hand) {
-            this.discard.push(card);
-        }
-        hand.length = 0;
-
-        // Draw up to max hand size
-        const maxHandSize = this.getMaxHandSize();
-        let drawn = 0;
-        for (let i = 0; i < maxHandSize; i++) {
-            if (this.tavern.length > 0) {
-                hand.push(this.tavern.pop());
-                drawn++;
+        if (this.playerCount === 1) {
+            // SOLO MODE: counter-based Jokers (always available)
+            if (this.jokersAvailable <= 0) {
+                return { success: false, message: 'No Jokers available' };
             }
-        }
 
-        this.jokersAvailable--;
-        this.jokersUsed++;
-        this.addLog(`🃏 Joker played! Hand reset. Drew ${drawn} new cards. (${this.jokersAvailable} Joker(s) remaining)`);
-        
-        // Phase stays 'play' - still player's turn, no enemy attack
-        return { success: true, drawn, message: `Hand reset! Drew ${drawn} new cards.` };
+            // Discard all cards in hand
+            for (const card of hand) {
+                this.discard.push(card);
+            }
+            hand.length = 0;
+
+            // Draw up to max hand size
+            const maxHandSize = this.getMaxHandSize();
+            let drawn = 0;
+            for (let i = 0; i < maxHandSize; i++) {
+                if (this.tavern.length > 0) {
+                    hand.push(this.tavern.pop());
+                    drawn++;
+                }
+            }
+
+            this.jokersAvailable--;
+            this.jokersUsed++;
+            this.addLog(`🃏 Joker played! Hand reset. Drew ${drawn} new cards. (${this.jokersAvailable} Joker(s) remaining)`);
+            return { success: true, drawn, message: `Hand reset! Drew ${drawn} new cards.` };
+        } else {
+            // MULTIPLAYER MODE: Joker must be a card in hand
+            const jokerIndex = hand.findIndex(c => c.rank === 'Joker');
+            if (jokerIndex === -1) {
+                return { success: false, message: 'No Joker in hand' };
+            }
+
+            // Remove the Joker card from hand (it gets discarded/removed)
+            const jokerCard = hand.splice(jokerIndex, 1)[0];
+            this.discard.push(jokerCard);
+
+            // Discard remaining hand
+            for (const card of hand) {
+                this.discard.push(card);
+            }
+            hand.length = 0;
+
+            // Draw up to max hand size
+            const maxHandSize = this.getMaxHandSize();
+            let drawn = 0;
+            for (let i = 0; i < maxHandSize; i++) {
+                if (this.tavern.length > 0) {
+                    hand.push(this.tavern.pop());
+                    drawn++;
+                }
+            }
+
+            this.jokersUsed++;
+            this.addLog(`🃏 Joker played from hand! Hand reset. Drew ${drawn} new cards.`);
+            return { success: true, drawn, message: `Hand reset! Drew ${drawn} new cards.` };
+        }
     }
 
     /**
@@ -578,7 +618,8 @@ class RegicideGame {
             log: [...this.log],
             playerCount: this.playerCount,
             jokersAvailable: this.jokersAvailable,
-            jokersUsed: this.jokersUsed
+            jokersUsed: this.jokersUsed,
+            hasJokerInHand: this.playerCount > 1 ? this.hands[this.currentPlayer].some(c => c.rank === 'Joker') : false
         };
     }
 }

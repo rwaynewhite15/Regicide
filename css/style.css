@@ -540,6 +540,7 @@ body {
 
 .card.red { color: var(--red); }
 .card.black { color: #2c3e50; }
+.card.joker { color: #9b59b6; }
 
 .card-corner {
     position: absolute;
