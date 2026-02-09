@@ -83,9 +83,9 @@ function shuffle(arr) {
  * Check if a set of cards forms a valid combo.
  * Valid combos:
  * - Single card (any)
- * - Pair of same rank (non-face, non-Ace)
+ * - Pair of same rank (non-face, non-Ace) - total must be ≤ 10
  * - Animal companion pairs: pairs of Aces
- * - Multiple cards of same rank (2-4 of same value)
+ * - Multiple cards of same rank (2-4 of same value) - total must be ≤ 10
  */
 function isValidCombo(cards) {
     if (cards.length === 0) return false;
@@ -96,7 +96,10 @@ function isValidCombo(cards) {
     // Face cards cannot be played from hand (they are enemies)
     if (FACE_RANKS.includes(rank)) return false;
     // Allow pairs/triples/quads of same rank
-    return cards.length <= 4;
+    if (cards.length > 4) return false;
+    // Same-rank sets can only add up to 10
+    const total = cards.reduce((sum, c) => sum + cardValue(c), 0);
+    return total <= 10;
 }
 
 function comboValue(cards) {

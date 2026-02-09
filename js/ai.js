@@ -137,7 +137,10 @@ class RegicideAI {
                 // Generate all pairs
                 for (let i = 0; i < group.length; i++) {
                     for (let j = i + 1; j < group.length; j++) {
-                        plays.push([group[i], group[j]]);
+                        const combo = [group[i], group[j]];
+                        if (isValidCombo(combo)) {
+                            plays.push(combo);
+                        }
                     }
                 }
                 // Triples
@@ -145,14 +148,20 @@ class RegicideAI {
                     for (let i = 0; i < group.length; i++) {
                         for (let j = i + 1; j < group.length; j++) {
                             for (let k = j + 1; k < group.length; k++) {
-                                plays.push([group[i], group[j], group[k]]);
+                                const combo = [group[i], group[j], group[k]];
+                                if (isValidCombo(combo)) {
+                                    plays.push(combo);
+                                }
                             }
                         }
                     }
                 }
                 // Quads
                 if (group.length >= 4) {
-                    plays.push([...group]);
+                    const combo = [...group];
+                    if (isValidCombo(combo)) {
+                        plays.push(combo);
+                    }
                 }
             }
         }

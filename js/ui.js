@@ -491,8 +491,16 @@ class RegicideUI {
             const hand = state.hands[0];
             const selected = [...this.selectedCards].map(id => hand.find(c => c.id === id)).filter(Boolean);
             if (!isValidCombo(selected)) {
-                // Show hint about invalid combo
-                this.showMessage('Cards must be the same rank to play together');
+                // Check if all cards are the same rank
+                const allSameRank = selected.length > 0 && selected.every(c => c.rank === selected[0].rank);
+                if (allSameRank) {
+                    // Same rank but total exceeds 10
+                    const total = selected.reduce((sum, c) => sum + cardValue(c), 0);
+                    this.showMessage(`Same-rank combos can only total up to 10 (current: ${total})`);
+                } else {
+                    // Different ranks
+                    this.showMessage('Cards must be the same rank to play together');
+                }
             }
         }
 
