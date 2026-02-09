@@ -124,13 +124,14 @@ class RegicideAI {
             plays.push([card]);
         }
 
-        // Pairs of same rank
+        // Group cards by rank
         const byRank = {};
         for (const card of hand) {
             if (!byRank[card.rank]) byRank[card.rank] = [];
             byRank[card.rank].push(card);
         }
 
+        // Same-rank combos (pairs, triples, quads)
         for (const rank in byRank) {
             const group = byRank[rank];
             if (group.length >= 2) {
@@ -153,6 +154,41 @@ class RegicideAI {
                 // Quads
                 if (group.length >= 4) {
                     plays.push([...group]);
+                }
+            }
+        }
+
+        // Animal Companion combos: Aces + single non-Ace card
+        const aces = byRank['A'] || [];
+        if (aces.length > 0) {
+            // Get all non-Ace cards
+            const nonAces = hand.filter(c => c.rank !== 'A');
+            
+            // For each non-Ace card, generate combos with 1-3 Aces
+            for (const nonAce of nonAces) {
+                // Single Ace + non-Ace
+                for (const ace of aces) {
+                    plays.push([ace, nonAce]);
+                }
+                
+                // Two Aces + non-Ace
+                if (aces.length >= 2) {
+                    for (let i = 0; i < aces.length; i++) {
+                        for (let j = i + 1; j < aces.length; j++) {
+                            plays.push([aces[i], aces[j], nonAce]);
+                        }
+                    }
+                }
+                
+                // Three Aces + non-Ace
+                if (aces.length >= 3) {
+                    for (let i = 0; i < aces.length; i++) {
+                        for (let j = i + 1; j < aces.length; j++) {
+                            for (let k = j + 1; k < aces.length; k++) {
+                                plays.push([aces[i], aces[j], aces[k], nonAce]);
+                            }
+                        }
+                    }
                 }
             }
         }
