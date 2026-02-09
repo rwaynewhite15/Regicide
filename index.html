@@ -4,40 +4,141 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Regicide - Card Game</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: Georgia, 'Times New Roman', serif;
-            background-color: #1a1a2e;
-            color: #e0e0e0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-        h1 {
-            font-size: 3rem;
-            color: #c9a227;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            font-size: 1.25rem;
-            color: #b0b0b0;
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Regicide</h1>
-        <p>Card Game</p>
+
+    <!-- Main Menu -->
+    <div id="main-menu" class="main-menu">
+        <div class="menu-crown">♔</div>
+        <h1 class="menu-title">Regicide</h1>
+        <p class="menu-subtitle">A Cooperative Card Game</p>
+        <div class="menu-buttons">
+            <button id="start-game" class="btn btn-primary">Play with AI Partner</button>
+            <button id="show-rules" class="btn btn-secondary">How to Play</button>
+        </div>
     </div>
+
+    <!-- Rules Modal -->
+    <div id="rules-modal" class="rules-modal">
+        <div class="rules-content">
+            <h2>♔ How to Play Regicide</h2>
+            <p>Regicide is a cooperative card game where you and your AI partner work together to defeat 12 enemy royals.</p>
+
+            <h3>⚔️ Objective</h3>
+            <p>Defeat all 12 enemies (4 Jacks, 4 Queens, 4 Kings) to win.</p>
+
+            <h3>👑 Enemies</h3>
+            <ul>
+                <li><strong>Jacks</strong> — 20 HP, 10 Attack</li>
+                <li><strong>Queens</strong> — 30 HP, 15 Attack</li>
+                <li><strong>Kings</strong> — 40 HP, 20 Attack</li>
+            </ul>
+
+            <h3>🃏 Playing Cards</h3>
+            <p>On your turn, play one or more cards of the same rank. The total value deals damage to the current enemy.</p>
+            <ul>
+                <li><strong>Ace</strong> = 1, <strong>2-10</strong> = face value</li>
+            </ul>
+
+            <h3>✨ Suit Powers</h3>
+            <ul>
+                <li><strong>♣ Clubs</strong> — Double your damage</li>
+                <li><strong>♦ Diamonds</strong> — Draw cards from the tavern</li>
+                <li><strong>♠ Spades</strong> — Shield against enemy attack</li>
+                <li><strong>♥ Hearts</strong> — Recover cards from discard pile</li>
+            </ul>
+
+            <h3>⚡ Enemy Attack</h3>
+            <p>After you play, the enemy attacks. You must discard cards with total value equal to or greater than the enemy's attack (reduced by any shield).</p>
+
+            <h3>🏳️ Yielding</h3>
+            <p>You may yield your turn instead of playing, but you must discard a card and still face the enemy's attack.</p>
+
+            <h3>💀 Losing</h3>
+            <p>If you cannot discard enough cards to survive an enemy attack, you lose.</p>
+
+            <div class="rules-close">
+                <button id="close-rules" class="btn btn-primary">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Board -->
+    <div id="game-board" class="game-board hidden">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="game-stats">
+                <div class="stat">
+                    <span class="stat-icon">🏰</span>
+                    <span>Castle:</span>
+                    <span class="stat-value" id="castle-count">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-icon">🍺</span>
+                    <span>Tavern:</span>
+                    <span class="stat-value" id="tavern-count">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-icon">🗑️</span>
+                    <span>Discard:</span>
+                    <span class="stat-value" id="discard-count">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-icon">👑</span>
+                    <span>Defeated:</span>
+                    <span class="stat-value" id="enemies-defeated">0 / 12</span>
+                </div>
+            </div>
+            <div id="turn-label" class="turn-label your-turn">Your Turn</div>
+            <div class="top-right-btns">
+                <button class="btn-icon" onclick="ui.showRules()">Rules</button>
+            </div>
+        </div>
+
+        <!-- Game Area -->
+        <div class="game-area">
+            <!-- AI Hand (left) -->
+            <div id="ai-hand" class="ai-hand-area"></div>
+
+            <!-- Enemy (center) -->
+            <div id="enemy-area" class="enemy-area"></div>
+
+            <!-- Game Log (right) -->
+            <div class="game-log-area">
+                <div class="log-title">Battle Log</div>
+                <div id="game-log"></div>
+            </div>
+        </div>
+
+        <!-- Player Hand -->
+        <div class="player-area">
+            <div class="player-label">Your Hand</div>
+            <div id="player-hand"></div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <button id="play-btn" class="btn-play">⚔️ Play Cards</button>
+            <button id="yield-btn" class="btn-play">🏳️ Yield Turn</button>
+        </div>
+    </div>
+
+    <!-- Message Bar -->
+    <div id="message-bar" class="message-bar"></div>
+
+    <!-- Game Over Overlay -->
+    <div id="game-over-overlay" class="game-over-overlay">
+        <div id="game-over-title" class="victory-title"></div>
+        <div id="game-over-message" class="game-over-message"></div>
+        <div class="game-over-buttons">
+            <button id="new-game-btn" class="btn btn-primary">Play Again</button>
+            <button id="menu-btn" class="btn btn-secondary">Main Menu</button>
+        </div>
+    </div>
+
+    <script src="js/game.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/ui.js"></script>
 </body>
 </html>
