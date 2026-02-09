@@ -491,8 +491,22 @@ class RegicideUI {
             const hand = state.hands[0];
             const selected = [...this.selectedCards].map(id => hand.find(c => c.id === id)).filter(Boolean);
             if (!isValidCombo(selected)) {
-                // Show hint about invalid combo
-                this.showMessage('Cards must be the same rank to play together');
+                // Show context-aware hint about invalid combo
+                const aces = selected.filter(c => c.rank === 'A');
+                const nonAces = selected.filter(c => c.rank !== 'A');
+                
+                let message = 'Cards must be the same rank to play together';
+                
+                if (aces.length > 0 && nonAces.length > 1) {
+                    message = 'Aces can only be paired with one non-Ace card';
+                } else if (nonAces.length > 1) {
+                    const ranks = [...new Set(nonAces.map(c => c.rank))];
+                    if (ranks.length > 1) {
+                        message = 'Non-Ace cards must be the same rank';
+                    }
+                }
+                
+                this.showMessage(message);
             }
         }
 

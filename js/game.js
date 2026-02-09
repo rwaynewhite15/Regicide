@@ -83,20 +83,35 @@ function shuffle(arr) {
  * Check if a set of cards forms a valid combo.
  * Valid combos:
  * - Single card (any)
- * - Pair of same rank (non-face, non-Ace)
- * - Animal companion pairs: pairs of Aces
+ * - Multiple Aces (Animal Companion pack, 2-4 Aces)
+ * - 1-4 Aces + exactly 1 non-Ace card (Animal Companion combo)
  * - Multiple cards of same rank (2-4 of same value)
  */
 function isValidCombo(cards) {
     if (cards.length === 0) return false;
     if (cards.length === 1) return true;
-    // All cards must have the same rank
-    const rank = cards[0].rank;
-    if (!cards.every(c => c.rank === rank)) return false;
-    // Face cards cannot be played from hand (they are enemies)
-    if (FACE_RANKS.includes(rank)) return false;
-    // Allow pairs/triples/quads of same rank
-    return cards.length <= 4;
+    
+    // Separate aces from non-aces
+    const aces = cards.filter(c => c.rank === 'A');
+    const nonAces = cards.filter(c => c.rank !== 'A');
+    
+    // Face cards cannot be played from hand
+    if (nonAces.some(c => FACE_RANKS.includes(c.rank))) return false;
+    
+    // All aces — valid (animal companion pack)
+    if (nonAces.length === 0) return aces.length <= 4;
+    
+    // Aces + exactly 1 non-Ace card — valid (animal companion combo)
+    if (aces.length > 0 && nonAces.length === 1) return true;
+    
+    // Multiple non-Ace cards — must all be same rank (existing rule), no aces mixed in
+    if (aces.length === 0) {
+        const rank = nonAces[0].rank;
+        return nonAces.every(c => c.rank === rank) && nonAces.length <= 4;
+    }
+    
+    // Aces + multiple non-Ace cards — NOT valid
+    return false;
 }
 
 function comboValue(cards) {
