@@ -65,6 +65,21 @@
             <h3>💀 Losing</h3>
             <p>If you cannot discard enough cards to survive an enemy attack, you lose.</p>
 
+            <h3>🃏 Jokers (Solo Mode)</h3>
+            <p>In solo mode, you have 2 Joker tokens available at all times. Playing a Joker discards your entire hand and draws up to 8 new cards. Jokers don't deal damage or trigger suit powers. They don't trigger an enemy attack either — it's still your turn after using one.</p>
+            <p>Victory is tiered based on Joker usage:</p>
+            <ul>
+                <li><strong>🥇 Gold</strong> — No Jokers used</li>
+                <li><strong>🥈 Silver</strong> — 1 Joker used</li>
+                <li><strong>🥉 Bronze</strong> — 2 Jokers used</li>
+            </ul>
+
+            <h3>📏 Hand Size Limits</h3>
+            <p>Maximum hand size depends on player count: Solo = 8, 2 players = 7. Diamond draws will not exceed this limit.</p>
+
+            <h3>🛡️ Enemy Immunity</h3>
+            <p>Enemies are immune to the suit power matching their own suit. For example, a ♣ Club enemy ignores the Club damage doubling effect.</p>
+
             <div class="rules-close">
                 <button id="close-rules" class="btn btn-primary">Got it!</button>
             </div>
@@ -95,6 +110,11 @@
                     <span class="stat-icon">👑</span>
                     <span>Defeated:</span>
                     <span class="stat-value" id="enemies-defeated">0 / 12</span>
+                </div>
+                <div class="stat joker-stat" style="display: none;">
+                    <span class="stat-icon">🃏</span>
+                    <span>Jokers:</span>
+                    <span class="stat-value" id="joker-count">0</span>
                 </div>
             </div>
             <div id="turn-label" class="turn-label your-turn">Your Turn</div>
@@ -128,6 +148,7 @@
         <div class="action-bar">
             <button id="play-btn" class="btn-play">⚔️ Play Cards</button>
             <button id="yield-btn" class="btn-play">🏳️ Yield Turn</button>
+            <button id="joker-btn" class="btn-play" style="display: none;">🃏 Play Joker</button>
         </div>
     </div>
 
