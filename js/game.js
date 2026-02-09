@@ -83,8 +83,8 @@ function shuffle(arr) {
  * Check if a set of cards forms a valid combo.
  * Valid combos:
  * - Single card (any)
- * - Multiple Aces (Animal Companion pack)
- * - 1+ Aces + exactly 1 non-Ace card (Animal Companion combo)
+ * - Multiple Aces (Animal Companion pack, 2-4 Aces)
+ * - 1-4 Aces + exactly 1 non-Ace card (Animal Companion combo)
  * - Multiple cards of same rank (2-4 of same value)
  */
 function isValidCombo(cards) {

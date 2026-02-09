@@ -164,7 +164,7 @@ class RegicideAI {
             // Get all non-Ace cards
             const nonAces = hand.filter(c => c.rank !== 'A');
             
-            // For each non-Ace card, generate combos with 1-3 Aces
+            // For each non-Ace card, generate combos with 1-3 Aces (max 4 cards total)
             for (const nonAce of nonAces) {
                 // Single Ace + non-Ace
                 for (const ace of aces) {

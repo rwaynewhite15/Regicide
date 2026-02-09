@@ -498,7 +498,7 @@ class RegicideUI {
                 let message = 'Cards must be the same rank to play together';
                 
                 if (aces.length > 0 && nonAces.length > 1) {
-                    message = 'Aces can only be paired with one other card';
+                    message = 'Aces can only be paired with one non-Ace card';
                 } else if (nonAces.length > 1) {
                     const ranks = [...new Set(nonAces.map(c => c.rank))];
                     if (ranks.length > 1) {
