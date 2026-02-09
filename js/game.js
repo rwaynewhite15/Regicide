@@ -225,8 +225,8 @@ class RegicideGame {
      * Discards entire hand and draws back up to max hand size.
      */
     playJoker(playerIndex) {
-        if (this.phase !== 'play') {
-            return { success: false, message: 'Not in play phase' };
+        if (this.phase !== 'play' && this.phase !== 'discard') {
+            return { success: false, message: 'Can only use Joker during play or discard phase' };
         }
         if (playerIndex !== this.currentPlayer) {
             return { success: false, message: 'Not your turn' };
@@ -240,28 +240,59 @@ class RegicideGame {
                 return { success: false, message: 'No Jokers available' };
             }
 
-            // Discard all cards in hand
-            for (const card of hand) {
-                this.discard.push(card);
-            }
-            hand.length = 0;
-
-            // Draw up to max hand size
-            const maxHandSize = this.getMaxHandSize();
-            let drawn = 0;
-            for (let i = 0; i < maxHandSize; i++) {
-                if (this.tavern.length > 0) {
-                    hand.push(this.tavern.pop());
-                    drawn++;
+            if (this.phase === 'play') {
+                // Normal play phase usage
+                // Discard all cards in hand
+                for (const card of hand) {
+                    this.discard.push(card);
                 }
-            }
+                hand.length = 0;
 
-            this.jokersAvailable--;
-            this.jokersUsed++;
-            this.addLog(`🃏 Joker played! Hand reset. Drew ${drawn} new cards. (${this.jokersAvailable} Joker(s) remaining)`);
-            return { success: true, drawn, message: `Hand reset! Drew ${drawn} new cards.` };
+                // Draw up to max hand size
+                const maxHandSize = this.getMaxHandSize();
+                let drawn = 0;
+                for (let i = 0; i < maxHandSize; i++) {
+                    if (this.tavern.length > 0) {
+                        hand.push(this.tavern.pop());
+                        drawn++;
+                    }
+                }
+
+                this.jokersAvailable--;
+                this.jokersUsed++;
+                this.addLog(`🃏 Joker played! Hand reset. Drew ${drawn} new cards. (${this.jokersAvailable} Joker(s) remaining)`);
+                return { success: true, drawn, message: `Hand reset! Drew ${drawn} new cards.` };
+            } else if (this.phase === 'discard') {
+                // Discard phase emergency usage - reset hand but still absorb damage
+                // Discard all cards in hand
+                for (const card of hand) {
+                    this.discard.push(card);
+                }
+                hand.length = 0;
+
+                // Draw up to max hand size
+                const maxHandSize = this.getMaxHandSize();
+                let drawn = 0;
+                for (let i = 0; i < maxHandSize; i++) {
+                    if (this.tavern.length > 0) {
+                        hand.push(this.tavern.pop());
+                        drawn++;
+                    }
+                }
+
+                this.jokersAvailable--;
+                this.jokersUsed++;
+                this.addLog(`🃏 Emergency Joker! Hand reset. Drew ${drawn} new cards. Still need to absorb ${this.discardNeeded - this.discardedSoFar.reduce((s, c) => s + cardValue(c), 0)} damage.`);
+                
+                // Phase stays 'discard' - player must still absorb the remaining damage
+                return { success: true, drawn, message: `Hand reset! Drew ${drawn} new cards. Still need to absorb the attack damage.` };
+            }
         } else {
             // MULTIPLAYER MODE: Joker must be a card in hand
+            if (this.phase !== 'play') {
+                return { success: false, message: 'Can only use Joker during play phase in multiplayer' };
+            }
+
             const jokerIndex = hand.findIndex(c => c.rank === 'Joker');
             if (jokerIndex === -1) {
                 return { success: false, message: 'No Joker in hand' };
