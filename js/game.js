@@ -52,11 +52,7 @@ function createDeck(playerCount = 1) {
             deck.push({ suit, rank, id: `${rank}_${suit}` });
         }
     }
-    // Add Jokers in solo mode only
-    if (playerCount === 1) {
-        deck.push({ suit: 'joker', rank: 'Joker', id: 'Joker_1' });
-        deck.push({ suit: 'joker', rank: 'Joker', id: 'Joker_2' });
-    }
+    // Jokers are no longer cards - they are a separate resource counter
     return deck;
 }
 
@@ -160,6 +156,7 @@ class RegicideGame {
         this.discardedSoFar = [];
         this.enemiesDefeated = 0;
         this.yieldUsed = false;
+        this.jokersAvailable = (this.playerCount === 1) ? 2 : 0;
         this.jokersUsed = 0;
 
         // Deal hands
@@ -215,8 +212,9 @@ class RegicideGame {
     }
 
     /**
-     * Play a Joker card to reset hand (solo mode only).
+     * Play a Joker to reset hand (solo mode only).
      * Discards entire hand and draws back up to max hand size.
+     * Jokers are a separate resource counter, not cards.
      */
     playJoker(playerIndex) {
         if (this.phase !== 'play') {
@@ -225,24 +223,17 @@ class RegicideGame {
         if (playerIndex !== this.currentPlayer) {
             return { success: false, message: 'Not your turn' };
         }
+        if (this.jokersAvailable <= 0) {
+            return { success: false, message: 'No Jokers available' };
+        }
 
         const hand = this.hands[playerIndex];
-        const jokerCard = hand.find(c => c.rank === 'Joker');
-        
-        if (!jokerCard) {
-            return { success: false, message: 'No Joker in hand' };
-        }
 
-        // Remove Joker from hand (it's removed from game, not discarded)
-        const jokerIdx = hand.indexOf(jokerCard);
-        hand.splice(jokerIdx, 1);
-
-        // Discard all remaining cards in hand
-        const discardedCards = [...hand];
-        for (const card of discardedCards) {
+        // Discard all cards in hand
+        for (const card of hand) {
             this.discard.push(card);
         }
-        hand.length = 0; // Clear hand
+        hand.length = 0;
 
         // Draw up to max hand size
         const maxHandSize = this.getMaxHandSize();
@@ -254,10 +245,11 @@ class RegicideGame {
             }
         }
 
+        this.jokersAvailable--;
         this.jokersUsed++;
-        this.addLog(`🃏 Joker played! Hand reset. (Joker ${this.jokersUsed} of 2 used)`);
+        this.addLog(`🃏 Joker played! Hand reset. Drew ${drawn} new cards. (${this.jokersAvailable} Joker(s) remaining)`);
         
-        // Phase stays 'play' - it's still the player's turn
+        // Phase stays 'play' - still player's turn, no enemy attack
         return { success: true, drawn, message: `Hand reset! Drew ${drawn} new cards.` };
     }
 
@@ -566,16 +558,6 @@ class RegicideGame {
             ? Math.max(0, this.currentEnemyAttack - this.shieldAmount) 
             : 0;
         
-        // Count jokers remaining in hand and tavern
-        let jokersInHand = 0;
-        let jokersInTavern = 0;
-        
-        if (this.playerCount === 1) {
-            jokersInHand = this.hands.reduce((count, hand) => 
-                count + hand.filter(c => c.rank === 'Joker').length, 0);
-            jokersInTavern = this.tavern.filter(c => c.rank === 'Joker').length;
-        }
-        
         return {
             phase: this.phase,
             currentPlayer: this.currentPlayer,
@@ -595,8 +577,8 @@ class RegicideGame {
             totalEnemies: 12,
             log: [...this.log],
             playerCount: this.playerCount,
-            jokersUsed: this.jokersUsed,
-            jokersRemaining: jokersInHand + jokersInTavern
+            jokersAvailable: this.jokersAvailable,
+            jokersUsed: this.jokersUsed
         };
     }
 }

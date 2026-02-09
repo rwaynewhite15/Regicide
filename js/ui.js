@@ -69,11 +69,13 @@ class RegicideUI {
     bindGameEvents() {
         const playBtn = document.getElementById('play-btn');
         const yieldBtn = document.getElementById('yield-btn');
+        const jokerBtn = document.getElementById('joker-btn');
         const newGameBtn = document.getElementById('new-game-btn');
         const menuBtn = document.getElementById('menu-btn');
 
         playBtn.addEventListener('click', () => this.handlePlay());
         yieldBtn.addEventListener('click', () => this.handleYield());
+        if (jokerBtn) jokerBtn.addEventListener('click', () => this.handleJoker());
         newGameBtn.addEventListener('click', () => this.startGame(this.playerCount || 2));
         menuBtn.addEventListener('click', () => this.returnToMenu());
     }
@@ -172,6 +174,22 @@ class RegicideUI {
                     this.checkAndRunAI();
                 }
             }
+        }
+    }
+
+    handleJoker() {
+        if (this.animating) return;
+        const state = this.game.getState();
+        if (state.phase !== 'play' || state.currentPlayer !== 0) return;
+        if (state.jokersAvailable <= 0) return;
+
+        const result = this.game.playJoker(0);
+        if (result.success) {
+            this.selectedCards.clear();
+            this.render();
+            this.showMessage(`🃏 Hand reset! Drew ${result.drawn} new cards.`);
+        } else {
+            this.showMessage(result.message);
         }
     }
 
@@ -393,6 +411,16 @@ class RegicideUI {
         document.getElementById('discard-count').textContent = state.discardCount;
         document.getElementById('enemies-defeated').textContent = `${state.enemiesDefeated} / ${state.totalEnemies}`;
 
+        const jokerStat = document.getElementById('joker-count');
+        if (jokerStat) {
+            if (state.playerCount === 1) {
+                jokerStat.textContent = state.jokersAvailable;
+                jokerStat.closest('.stat').style.display = '';
+            } else {
+                jokerStat.closest('.stat').style.display = 'none';
+            }
+        }
+
         const turnLabel = document.getElementById('turn-label');
         if (state.phase === 'gameover') {
             turnLabel.textContent = 'Game Over';
@@ -424,6 +452,7 @@ class RegicideUI {
     renderActions(state) {
         const playBtn = document.getElementById('play-btn');
         const yieldBtn = document.getElementById('yield-btn');
+        const jokerBtn = document.getElementById('joker-btn');
 
         if (state.currentPlayer === 0 && state.phase === 'play') {
             playBtn.disabled = false;
@@ -439,6 +468,16 @@ class RegicideUI {
             playBtn.disabled = true;
             playBtn.textContent = '⏳ Waiting...';
             yieldBtn.disabled = true;
+        }
+
+        if (jokerBtn) {
+            if (state.playerCount === 1 && state.jokersAvailable > 0 && state.currentPlayer === 0 && state.phase === 'play') {
+                jokerBtn.style.display = '';
+                jokerBtn.textContent = `🃏 Play Joker (${state.jokersAvailable} left)`;
+                jokerBtn.disabled = false;
+            } else {
+                jokerBtn.style.display = 'none';
+            }
         }
     }
 
@@ -458,17 +497,34 @@ class RegicideUI {
         const state = this.game.getState();
 
         if (victory) {
-            title.textContent = '🎉 Victory!';
-            title.className = 'victory-title';
-            if (this.ai) {
-                message.textContent = `You and your AI partner defeated all ${state.enemiesDefeated} enemies! The kingdom is saved!`;
+            if (!this.ai && this.playerCount === 1) {
+                // Solo mode tiered victory
+                const jokersUsed = state.jokersUsed;
+                if (jokersUsed === 0) {
+                    title.textContent = '🥇 GOLD VICTORY!';
+                    title.className = 'victory-title victory-gold';
+                    message.textContent = 'You conquered all 12 enemies without using any Jokers! A true Regicide master!';
+                } else if (jokersUsed === 1) {
+                    title.textContent = '🥈 SILVER VICTORY!';
+                    title.className = 'victory-title victory-silver';
+                    message.textContent = 'You conquered all 12 enemies using only 1 Joker. An impressive feat!';
+                } else {
+                    title.textContent = '🥉 BRONZE VICTORY!';
+                    title.className = 'victory-title victory-bronze';
+                    message.textContent = 'You conquered all 12 enemies using both Jokers. The kingdom is saved!';
+                }
             } else {
-                message.textContent = `You defeated all ${state.enemiesDefeated} enemies! The kingdom is saved!`;
+                title.textContent = '🎉 Victory!';
+                title.className = 'victory-title';
+                message.textContent = `You and your AI partner defeated all ${state.enemiesDefeated} enemies! The kingdom is saved!`;
             }
         } else {
-            title.textContent = '💀 Defeat';
+            title.textContent = '💀 DEFEAT';
             title.className = 'defeat-title';
-            message.textContent = `You defeated ${state.enemiesDefeated} of ${state.totalEnemies} enemies. The kingdom falls...`;
+            const enemyName = state.currentEnemy 
+                ? `The ${state.currentEnemy.rank === 'J' ? 'Jack' : state.currentEnemy.rank === 'Q' ? 'Queen' : 'King'} of ${state.currentEnemy.suit}` 
+                : 'The enemy';
+            message.textContent = `${enemyName} proved too powerful. You defeated ${state.enemiesDefeated} of ${state.totalEnemies} enemies before falling.`;
         }
 
         overlay.classList.add('active');

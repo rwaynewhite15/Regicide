@@ -177,6 +177,10 @@ body {
 .stat-icon { font-size: 0.9rem; }
 .stat-value { color: var(--gold); font-weight: bold; }
 
+.joker-stat .stat-value {
+    color: #9b59b6;
+}
+
 .turn-label {
     font-size: 0.85rem;
     font-weight: bold;
@@ -611,6 +615,16 @@ body {
 
 #yield-btn.hidden { display: none; }
 
+#joker-btn {
+    background: linear-gradient(135deg, #9b59b6, #7d3c98);
+    color: white;
+}
+
+#joker-btn:not(:disabled):hover {
+    background: linear-gradient(135deg, #af7ac5, #9b59b6);
+    box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+}
+
 /* ---- Message Bar ---- */
 .message-bar {
     position: fixed;
@@ -663,6 +677,21 @@ body {
     font-size: 3rem;
     color: var(--gold);
     text-shadow: 0 0 40px rgba(201, 162, 39, 0.5);
+}
+
+.victory-gold {
+    color: #FFD700 !important;
+    text-shadow: 0 0 40px rgba(255, 215, 0, 0.6) !important;
+}
+
+.victory-silver {
+    color: #C0C0C0 !important;
+    text-shadow: 0 0 40px rgba(192, 192, 192, 0.6) !important;
+}
+
+.victory-bronze {
+    color: #CD7F32 !important;
+    text-shadow: 0 0 40px rgba(205, 127, 50, 0.6) !important;
 }
 
 .defeat-title {
