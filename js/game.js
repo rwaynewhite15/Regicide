@@ -132,7 +132,7 @@ class RegicideGame {
         this.yieldUsed = false;
 
         // Deal hands
-        const handSize = this.playerCount <= 2 ? 7 : (this.playerCount === 3 ? 6 : 5);
+        const handSize = this.playerCount === 1 ? 8 : (this.playerCount === 2 ? 7 : (this.playerCount === 3 ? 6 : 5));
         for (let i = 0; i < this.playerCount; i++) {
             this.hands.push([]);
             for (let j = 0; j < handSize; j++) {

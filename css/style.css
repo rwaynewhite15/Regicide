@@ -249,6 +249,15 @@ body {
     overflow: hidden;
 }
 
+/* Solo mode: hide AI hand and use 2-column layout */
+.solo-mode .game-area {
+    grid-template-columns: 2fr 1fr;
+}
+
+.solo-mode .ai-hand-area {
+    display: none;
+}
+
 /* AI Hand */
 .ai-hand-area {
     display: flex;
@@ -737,8 +746,17 @@ body {
         gap: 12px;
     }
 
+    /* Solo mode on mobile: simpler layout */
+    .solo-mode .game-area {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+    }
+
     .ai-hand-area { order: -1; }
     .game-log-area { order: 3; max-height: 100px; }
+    
+    /* Solo mode: log comes after enemy */
+    .solo-mode .game-log-area { order: 2; }
     
     .enemy-card {
         width: 110px;
@@ -758,6 +776,19 @@ body {
     .card-suit-small { font-size: 0.6rem; }
     
     .menu-title { font-size: 2.5rem; }
+    
+    /* Improve button sizes for touch */
+    .btn {
+        padding: 16px 30px;
+        font-size: 1.15rem;
+        min-height: 48px;
+    }
+    
+    .btn-play {
+        padding: 14px 36px;
+        font-size: 1.05rem;
+        min-height: 48px;
+    }
 }
 
 @media (max-width: 600px) {
@@ -774,5 +805,23 @@ body {
     .enemy-card {
         width: 90px;
         height: 126px;
+    }
+    
+    /* Ensure buttons remain touch-friendly */
+    .btn {
+        padding: 16px 28px;
+        font-size: 1.1rem;
+        min-height: 48px;
+    }
+    
+    .btn-play {
+        padding: 14px 32px;
+        font-size: 1rem;
+        min-height: 48px;
+    }
+    
+    .action-bar {
+        gap: 10px;
+        padding: 10px;
     }
 }
