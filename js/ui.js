@@ -183,7 +183,13 @@ class RegicideUI {
     handleJoker() {
         if (this.animating) return;
         const state = this.game.getState();
-        if (state.phase !== 'play' || state.currentPlayer !== 0) return;
+        
+        // Allow Joker during play phase or discard phase (solo mode only for discard)
+        if (state.currentPlayer !== 0) return;
+        if (state.phase !== 'play' && state.phase !== 'discard') return;
+        
+        // In multiplayer, only allow during play phase
+        if (state.playerCount > 1 && state.phase !== 'play') return;
         
         // Solo: check counter; Multiplayer: check if Joker card in hand
         if (state.playerCount === 1) {
@@ -196,7 +202,7 @@ class RegicideUI {
         if (result.success) {
             this.selectedCards.clear();
             this.render();
-            this.showMessage(`🃏 Hand reset! Drew ${result.drawn} new cards.`);
+            this.showMessage(result.message);
         } else {
             this.showMessage(result.message);
         }
@@ -486,14 +492,21 @@ class RegicideUI {
         }
 
         if (jokerBtn) {
-            const showJoker = state.currentPlayer === 0 && state.phase === 'play' && (
-                (state.playerCount === 1 && state.jokersAvailable > 0) ||
-                (state.playerCount > 1 && state.hasJokerInHand)
+            const showJoker = state.currentPlayer === 0 && (
+                (state.phase === 'play' && (
+                    (state.playerCount === 1 && state.jokersAvailable > 0) ||
+                    (state.playerCount > 1 && state.hasJokerInHand)
+                )) ||
+                (state.phase === 'discard' && state.playerCount === 1 && state.jokersAvailable > 0)
             );
             if (showJoker) {
                 jokerBtn.style.display = '';
                 if (state.playerCount === 1) {
-                    jokerBtn.textContent = `🃏 Play Joker (${state.jokersAvailable} left)`;
+                    if (state.phase === 'discard') {
+                        jokerBtn.textContent = `🃏 Emergency Joker (${state.jokersAvailable} left)`;
+                    } else {
+                        jokerBtn.textContent = `🃏 Play Joker (${state.jokersAvailable} left)`;
+                    }
                 } else {
                     jokerBtn.textContent = `🃏 Play Joker`;
                 }
