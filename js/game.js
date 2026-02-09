@@ -419,10 +419,10 @@ class RegicideGame {
                 this.discard.push(card);
             }
 
-            // If enemy HP is exactly 0, enemy card goes to discard (can be healed back)
+            // If enemy HP is exactly 0, enemy card goes face-down on top of the tavern deck
             if (this.currentEnemyHP === 0) {
-                this.discard.push(this.currentEnemy);
-                this.addLog(`The ${this.currentEnemy.rank}${SUIT_SYMBOLS[this.currentEnemy.suit]} joins the discard pile.`);
+                this.tavern.push(this.currentEnemy);
+                this.addLog(`👑 The ${this.currentEnemy.rank}${SUIT_SYMBOLS[this.currentEnemy.suit]} is placed on top of the tavern deck!`);
             }
             // If overkill, enemy is removed from game
 
