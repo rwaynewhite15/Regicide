@@ -516,18 +516,28 @@ class RegicideGame {
             events.push({ type: 'enemy_attack', amount: effectiveAttack, message: `Enemy attacks for ${effectiveAttack}! Discard cards totaling ${effectiveAttack}.` });
             this.addLog(`⚡ Enemy attacks for ${effectiveAttack}! Discard cards to survive.`);
 
-            // Check if player can survive
+            // Check if player can fully absorb the attack
             const totalHandValue = this.hands[this.currentPlayer].reduce((s, c) => s + cardValue(c), 0);
-            if (totalHandValue < effectiveAttack && this.hands[this.currentPlayer].length > 0) {
-                // Must discard entire hand
-                this.addLog(`Player ${this.currentPlayer + 1} cannot fully absorb the attack.`);
-            }
             
-            // Check game-over condition
-            if (isGameOverCondition(this)) {
-                this.phase = 'gameover';
-                events.push({ type: 'gameover', message: 'No cards to discard, no Jokers available, and tavern is empty. Game Over!' });
-                this.addLog('💀 Game Over! No cards to absorb damage.');
+            if (totalHandValue < effectiveAttack) {
+                // Player cannot fully absorb the attack - check if Jokers are available
+                let hasJokers = false;
+                if (this.playerCount === 1) {
+                    // Solo mode: check counter
+                    hasJokers = this.jokersAvailable > 0;
+                } else {
+                    // Multiplayer mode: check if any player has a Joker card
+                    hasJokers = this.hands.some(h => h.some(c => c.rank === 'Joker'));
+                }
+                
+                // If no Jokers available, trigger defeat
+                if (!hasJokers) {
+                    this.phase = 'gameover';
+                    events.push({ type: 'gameover', message: 'Cannot absorb attack and no Jokers available. Game Over!' });
+                    this.addLog('💀 Game Over! Cannot absorb attack damage and no Jokers available.');
+                } else {
+                    this.addLog(`Player ${this.currentPlayer + 1} cannot fully absorb the attack.`);
+                }
             }
         } else {
             // No damage to absorb, next player's turn
@@ -552,6 +562,32 @@ class RegicideGame {
         }
 
         const hand = this.hands[playerIndex];
+        
+        // Check if player can fully absorb the attack
+        const totalSoFar = this.discardedSoFar.reduce((s, c) => s + cardValue(c), 0);
+        const handValue = hand.reduce((s, c) => s + cardValue(c), 0);
+        const maxPossibleAbsorb = totalSoFar + handValue;
+        
+        // If player cannot fully absorb the attack even with all cards
+        if (maxPossibleAbsorb < this.discardNeeded) {
+            // Check if Jokers are available
+            let hasJokers = false;
+            if (this.playerCount === 1) {
+                // Solo mode: check counter
+                hasJokers = this.jokersAvailable > 0;
+            } else {
+                // Multiplayer mode: check if any player has a Joker card
+                hasJokers = this.hands.some(h => h.some(c => c.rank === 'Joker'));
+            }
+            
+            // If no Jokers available, trigger defeat
+            if (!hasJokers) {
+                this.phase = 'gameover';
+                this.addLog('💀 Game Over! Cannot absorb attack damage and no Jokers available.');
+                return { success: true, gameover: true, message: 'Game Over! Cannot absorb attack damage.' };
+            }
+        }
+        
         const cards = cardIds.map(id => hand.find(c => c.id === id)).filter(Boolean);
 
         if (cards.length === 0) {
@@ -559,7 +595,7 @@ class RegicideGame {
         }
 
         const discardValue = cards.reduce((s, c) => s + cardValue(c), 0);
-        const totalSoFar = this.discardedSoFar.reduce((s, c) => s + cardValue(c), 0) + discardValue;
+        const newTotalSoFar = totalSoFar + discardValue;
 
         // Remove from hand and add to discard
         for (const card of cards) {
@@ -574,7 +610,7 @@ class RegicideGame {
         const cardNames = cards.map(c => `${c.rank}${SUIT_SYMBOLS[c.suit]}`).join(', ');
         this.addLog(`Player ${playerIndex + 1} discards ${cardNames} (${discardValue} damage absorbed)`);
 
-        if (totalSoFar >= this.discardNeeded) {
+        if (newTotalSoFar >= this.discardNeeded) {
             // Survived the attack
             this.phase = 'play';
             this.discardNeeded = 0;
@@ -585,12 +621,12 @@ class RegicideGame {
         }
 
         // Need more discards - check if player has enough
-        const remaining = this.discardNeeded - totalSoFar;
-        const handValue = hand.reduce((s, c) => s + cardValue(c), 0);
+        const remaining = this.discardNeeded - newTotalSoFar;
+        const newHandValue = hand.reduce((s, c) => s + cardValue(c), 0);
 
         if (hand.length === 0) {
             // Player ran out of cards - check if survived
-            if (totalSoFar >= this.discardNeeded) {
+            if (newTotalSoFar >= this.discardNeeded) {
                 this.phase = 'play';
                 this.currentPlayer = (this.currentPlayer + 1) % this.playerCount;
                 return { success: true, survived: true, message: 'Attack survived!' };
@@ -641,11 +677,26 @@ class RegicideGame {
             this.phase = 'discard';
             this.addLog(`⚡ Enemy attacks for ${effectiveAttack}!`);
 
-            // Check game-over condition
-            if (isGameOverCondition(this)) {
-                this.phase = 'gameover';
-                this.addLog('💀 Game Over! No cards to discard, no Jokers available, and tavern is empty.');
-                return { success: true, gameover: true };
+            // Check if player can fully absorb the attack
+            const totalHandValue = this.hands[this.currentPlayer].reduce((s, c) => s + cardValue(c), 0);
+            
+            if (totalHandValue < effectiveAttack) {
+                // Player cannot fully absorb the attack - check if Jokers are available
+                let hasJokers = false;
+                if (this.playerCount === 1) {
+                    // Solo mode: check counter
+                    hasJokers = this.jokersAvailable > 0;
+                } else {
+                    // Multiplayer mode: check if any player has a Joker card
+                    hasJokers = this.hands.some(h => h.some(c => c.rank === 'Joker'));
+                }
+                
+                // If no Jokers available, trigger defeat
+                if (!hasJokers) {
+                    this.phase = 'gameover';
+                    this.addLog('💀 Game Over! Cannot absorb attack damage and no Jokers available.');
+                    return { success: true, gameover: true };
+                }
             }
 
             return { success: true, phase: 'discard', attackDamage: effectiveAttack };
