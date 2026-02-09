@@ -17,12 +17,13 @@
  */
 
 const SUITS = ['hearts', 'diamonds', 'clubs', 'spades'];
-const SUIT_SYMBOLS = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' };
-const SUIT_COLORS = { hearts: '#e74c3c', diamonds: '#e74c3c', clubs: '#2c3e50', spades: '#2c3e50' };
+const SUIT_SYMBOLS = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠', joker: '🃏' };
+const SUIT_COLORS = { hearts: '#e74c3c', diamonds: '#e74c3c', clubs: '#2c3e50', spades: '#2c3e50', joker: '#9b59b6' };
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 const FACE_RANKS = ['J', 'Q', 'K'];
 
 function cardValue(card) {
+    if (card.rank === 'Joker') return 0;
     if (card.rank === 'A') return 1;
     if (card.rank === 'J') return 10;
     if (card.rank === 'Q') return 15;
@@ -44,12 +45,17 @@ function enemyAttack(card) {
     return 0;
 }
 
-function createDeck() {
+function createDeck(playerCount = 1) {
     const deck = [];
     for (const suit of SUITS) {
         for (const rank of RANKS) {
             deck.push({ suit, rank, id: `${rank}_${suit}` });
         }
+    }
+    // Add Jokers in solo mode only
+    if (playerCount === 1) {
+        deck.push({ suit: 'joker', rank: 'Joker', id: 'Joker_1' });
+        deck.push({ suit: 'joker', rank: 'Joker', id: 'Joker_2' });
     }
     return deck;
 }
@@ -89,6 +95,10 @@ function shuffle(arr) {
  */
 function isValidCombo(cards) {
     if (cards.length === 0) return false;
+    
+    // Jokers cannot be played as combos
+    if (cards.some(c => c.rank === 'Joker')) return false;
+    
     if (cards.length === 1) return true;
     
     // Separate aces from non-aces
@@ -134,7 +144,7 @@ class RegicideGame {
     }
 
     reset() {
-        this.tavern = shuffle(createDeck());
+        this.tavern = shuffle(createDeck(this.playerCount));
         this.castle = createEnemyDeck();
         this.discard = [];
         this.hands = [];
@@ -150,6 +160,7 @@ class RegicideGame {
         this.discardedSoFar = [];
         this.enemiesDefeated = 0;
         this.yieldUsed = false;
+        this.jokersUsed = 0;
 
         // Deal hands
         const handSize = this.playerCount === 1 ? 8 : (this.playerCount === 2 ? 7 : (this.playerCount === 3 ? 6 : 5));
@@ -196,6 +207,60 @@ class RegicideGame {
         return this.phase === 'play';
     }
 
+    getMaxHandSize() {
+        if (this.playerCount === 1) return 8;
+        if (this.playerCount === 2) return 7;
+        if (this.playerCount === 3) return 6;
+        return 5; // 4 players
+    }
+
+    /**
+     * Play a Joker card to reset hand (solo mode only).
+     * Discards entire hand and draws back up to max hand size.
+     */
+    playJoker(playerIndex) {
+        if (this.phase !== 'play') {
+            return { success: false, message: 'Not in play phase' };
+        }
+        if (playerIndex !== this.currentPlayer) {
+            return { success: false, message: 'Not your turn' };
+        }
+
+        const hand = this.hands[playerIndex];
+        const jokerCard = hand.find(c => c.rank === 'Joker');
+        
+        if (!jokerCard) {
+            return { success: false, message: 'No Joker in hand' };
+        }
+
+        // Remove Joker from hand (it's removed from game, not discarded)
+        const jokerIdx = hand.indexOf(jokerCard);
+        hand.splice(jokerIdx, 1);
+
+        // Discard all remaining cards in hand
+        const discardedCards = [...hand];
+        for (const card of discardedCards) {
+            this.discard.push(card);
+        }
+        hand.length = 0; // Clear hand
+
+        // Draw up to max hand size
+        const maxHandSize = this.getMaxHandSize();
+        let drawn = 0;
+        for (let i = 0; i < maxHandSize; i++) {
+            if (this.tavern.length > 0) {
+                hand.push(this.tavern.pop());
+                drawn++;
+            }
+        }
+
+        this.jokersUsed++;
+        this.addLog(`🃏 Joker played! Hand reset. (Joker ${this.jokersUsed} of 2 used)`);
+        
+        // Phase stays 'play' - it's still the player's turn
+        return { success: true, drawn, message: `Hand reset! Drew ${drawn} new cards.` };
+    }
+
     /**
      * Play a combo of cards against the current enemy.
      * Returns { success, message, events }
@@ -236,12 +301,17 @@ class RegicideGame {
         let totalDamage = damage;
         let doubled = false;
 
-        // Clubs: double the damage
+        // Clubs: double the damage (unless enemy is immune)
         if (suits.includes('clubs')) {
-            totalDamage = damage * 2;
-            doubled = true;
-            events.push({ type: 'clubs', message: `♣ Clubs doubles damage to ${totalDamage}!` });
-            this.addLog(`♣ Damage doubled to ${totalDamage}!`);
+            if (this.currentEnemy.suit === 'clubs') {
+                events.push({ type: 'immunity', message: `❌ Enemy is immune to ♣ Clubs power!` });
+                this.addLog(`❌ Enemy is immune to ♣ Clubs power!`);
+            } else {
+                totalDamage = damage * 2;
+                doubled = true;
+                events.push({ type: 'clubs', message: `♣ Clubs doubles damage to ${totalDamage}!` });
+                this.addLog(`♣ Damage doubled to ${totalDamage}!`);
+            }
         }
 
         // Apply damage to enemy
@@ -249,44 +319,60 @@ class RegicideGame {
         events.push({ type: 'damage', amount: totalDamage, message: `Dealt ${totalDamage} damage!` });
         this.addLog(`💥 Dealt ${totalDamage} damage! Enemy HP: ${Math.max(0, this.currentEnemyHP)}`);
 
-        // Diamonds: draw cards
+        // Diamonds: draw cards (unless enemy is immune)
         if (suits.includes('diamonds')) {
-            const drawCount = Math.min(damage, this.tavern.length);
-            const totalHandCards = this.hands.reduce((sum, h) => sum + h.length, 0);
-            // Draw cards, distributing starting with current player
-            let drawn = 0;
-            for (let i = 0; i < drawCount; i++) {
-                if (this.tavern.length > 0) {
-                    const targetPlayer = (playerIndex + i) % this.playerCount;
-                    this.hands[targetPlayer].push(this.tavern.pop());
-                    drawn++;
+            if (this.currentEnemy.suit === 'diamonds') {
+                events.push({ type: 'immunity', message: `❌ Enemy is immune to ♦ Diamonds power!` });
+                this.addLog(`❌ Enemy is immune to ♦ Diamonds power!`);
+            } else {
+                const maxHand = this.getMaxHandSize();
+                const drawCount = Math.min(damage, this.tavern.length);
+                let drawn = 0;
+                for (let i = 0; i < drawCount; i++) {
+                    if (this.tavern.length > 0) {
+                        const targetPlayer = (playerIndex + i) % this.playerCount;
+                        if (this.hands[targetPlayer].length < maxHand) {
+                            this.hands[targetPlayer].push(this.tavern.pop());
+                            drawn++;
+                        }
+                    }
                 }
-            }
-            if (drawn > 0) {
-                events.push({ type: 'diamonds', message: `♦ Drew ${drawn} card(s)!` });
-                this.addLog(`♦ Drew ${drawn} card(s)!`);
+                if (drawn > 0) {
+                    events.push({ type: 'diamonds', message: `♦ Drew ${drawn} card(s)!` });
+                    this.addLog(`♦ Drew ${drawn} card(s)!`);
+                }
             }
         }
 
-        // Spades: reduce enemy attack (shield)
+        // Spades: reduce enemy attack (shield) (unless enemy is immune)
         if (suits.includes('spades')) {
-            this.shieldAmount += damage;
-            const effectiveAttack = Math.max(0, this.currentEnemyAttack - this.shieldAmount);
-            events.push({ type: 'spades', message: `♠ Shield! Enemy attack reduced to ${effectiveAttack}` });
-            this.addLog(`♠ Enemy attack reduced to ${effectiveAttack}!`);
+            if (this.currentEnemy.suit === 'spades') {
+                events.push({ type: 'immunity', message: `❌ Enemy is immune to ♠ Spades power!` });
+                this.addLog(`❌ Enemy is immune to ♠ Spades power!`);
+            } else {
+                this.shieldAmount += damage;
+                const effectiveAttack = Math.max(0, this.currentEnemyAttack - this.shieldAmount);
+                events.push({ type: 'spades', message: `♠ Shield! Enemy attack reduced to ${effectiveAttack}` });
+                this.addLog(`♠ Enemy attack reduced to ${effectiveAttack}!`);
+            }
         }
 
-        // Hearts: heal from discard pile to tavern bottom
+        // Hearts: heal from discard pile to tavern bottom (unless enemy is immune)
         if (suits.includes('hearts')) {
-            const healCount = Math.min(damage, this.discard.length);
-            for (let i = 0; i < healCount; i++) {
-                if (this.discard.length > 0) {
-                    this.tavern.unshift(this.discard.pop());
+            if (this.currentEnemy.suit === 'hearts') {
+                events.push({ type: 'immunity', message: `❌ Enemy is immune to ♥ Hearts power!` });
+                this.addLog(`❌ Enemy is immune to ♥ Hearts power!`);
+            } else {
+                const healCount = Math.min(damage, this.discard.length);
+                for (let i = 0; i < healCount; i++) {
+                    if (this.discard.length > 0) {
+                        this.tavern.unshift(this.discard.pop());
+                    }
                 }
-            }
-            if (healCount > 0) {
-                events.push({ type: 'hearts', message: `♥ Shuffled ${healCount} card(s) from discard to tavern!` });
-                this.addLog(`♥ Shuffled ${healCount} card(s) back to tavern!`);
+                if (healCount > 0) {
+                    events.push({ type: 'hearts', message: `♥ Shuffled ${healCount} card(s) from discard to tavern!` });
+                    this.addLog(`♥ Shuffled ${healCount} card(s) back to tavern!`);
+                }
             }
         }
 
@@ -480,6 +566,16 @@ class RegicideGame {
             ? Math.max(0, this.currentEnemyAttack - this.shieldAmount) 
             : 0;
         
+        // Count jokers remaining in hand and tavern
+        let jokersInHand = 0;
+        let jokersInTavern = 0;
+        
+        if (this.playerCount === 1) {
+            jokersInHand = this.hands.reduce((count, hand) => 
+                count + hand.filter(c => c.rank === 'Joker').length, 0);
+            jokersInTavern = this.tavern.filter(c => c.rank === 'Joker').length;
+        }
+        
         return {
             phase: this.phase,
             currentPlayer: this.currentPlayer,
@@ -498,7 +594,9 @@ class RegicideGame {
             enemiesDefeated: this.enemiesDefeated,
             totalEnemies: 12,
             log: [...this.log],
-            playerCount: this.playerCount
+            playerCount: this.playerCount,
+            jokersUsed: this.jokersUsed,
+            jokersRemaining: jokersInHand + jokersInTavern
         };
     }
 }
