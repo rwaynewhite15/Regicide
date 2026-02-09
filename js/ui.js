@@ -495,18 +495,18 @@ class RegicideUI {
                 const aces = selected.filter(c => c.rank === 'A');
                 const nonAces = selected.filter(c => c.rank !== 'A');
                 
+                let message = 'Cards must be the same rank to play together';
+                
                 if (aces.length > 0 && nonAces.length > 1) {
-                    this.showMessage('Aces can only be paired with one other card');
+                    message = 'Aces can only be paired with one other card';
                 } else if (nonAces.length > 1) {
                     const ranks = [...new Set(nonAces.map(c => c.rank))];
                     if (ranks.length > 1) {
-                        this.showMessage('Non-Ace cards must be the same rank');
-                    } else {
-                        this.showMessage('Cards must be the same rank to play together');
+                        message = 'Non-Ace cards must be the same rank';
                     }
-                } else {
-                    this.showMessage('Cards must be the same rank to play together');
                 }
+                
+                this.showMessage(message);
             }
         }
 
